@@ -1,0 +1,6 @@
+@RedMangoApi_HostAddress = http://localhost:5152
+
+GET {{RedMangoApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

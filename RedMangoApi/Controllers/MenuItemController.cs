@@ -39,6 +39,7 @@ namespace RedMangoApi.Controllers
             if(id == 0)
             {
                 _response.StatusCode = HttpStatusCode.BadRequest;
+                _response.IsSuccess = false;
                 return BadRequest(_response);
 
             }
@@ -46,6 +47,7 @@ namespace RedMangoApi.Controllers
             if(item == null)
             {
                 _response.StatusCode = HttpStatusCode.NotFound;
+                _response.IsSuccess = false;
                 return NotFound(_response);
             }
             _response.Result = item;
@@ -62,6 +64,8 @@ namespace RedMangoApi.Controllers
                 {
                     if(menuItemCreate.File == null || menuItemCreate.File.Length == 0)
                     {
+                        _response.StatusCode = HttpStatusCode.BadRequest;
+                        _response.IsSuccess = false;
                         return BadRequest();
                     }
                     string fileName = $"{Guid.NewGuid()}{Path.GetExtension(menuItemCreate.File.FileName)}";
@@ -105,6 +109,8 @@ namespace RedMangoApi.Controllers
                 {
                     if (menuItemUpdateDto == null || id != menuItemUpdateDto.Id)
                     {
+                        _response.StatusCode = HttpStatusCode.BadRequest;
+                        _response.IsSuccess = false;
                         return BadRequest();
                     }
 
@@ -112,6 +118,8 @@ namespace RedMangoApi.Controllers
 
                     if(item == null)
                     {
+                        _response.StatusCode = HttpStatusCode.BadRequest;
+                        _response.IsSuccess = false;
                         return BadRequest();
                     }
 
@@ -156,6 +164,8 @@ namespace RedMangoApi.Controllers
                 
                 if(item == null || id == 0)
                 {
+                    _response.StatusCode = HttpStatusCode.BadRequest;
+                    _response.IsSuccess = false;
                     return BadRequest();
                 }
 

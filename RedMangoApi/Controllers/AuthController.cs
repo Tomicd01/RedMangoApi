@@ -2,11 +2,16 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using RedMangoApi.Data;
 using RedMangoApi.Models;
 using RedMangoApi.Models.Dto;
 using RedMangoApi.Services;
 using RedMangoApi.Utility;
+using System.IdentityModel.Tokens.Jwt;
+using System.Text;
+using System.Security;
+using System.Security.Claims;
 
 namespace RedMangoApi.Controllers
 {
@@ -30,7 +35,7 @@ namespace RedMangoApi.Controllers
             _roleManager = roleManager;
         }
 
-        [HttpPost]
+        [HttpPost("Register")]
         public async Task<IActionResult> Register([FromForm] RegisterRequestDto model)
         {
             ApplicationUser user = await _context.ApplicationUsers.FirstOrDefaultAsync(u => u.UserName.ToLower() == model.UserName.ToLower());
@@ -86,6 +91,64 @@ namespace RedMangoApi.Controllers
             _response.IsSuccess = false;
             _response.ErrorMessages.Add("Error while registering.");
             return BadRequest(_response);
+        }
+
+        [HttpPost("Login")]
+        public async Task<IActionResult> Login([FromForm] LoginRequestDto model)
+        {
+            ApplicationUser user = await _context.ApplicationUsers.FirstOrDefaultAsync(u => u.UserName.ToLower() == model.Username.ToLower());
+
+            bool isValid = await _userManager.CheckPasswordAsync(user, model.Password);
+            if (!isValid)
+            {
+                _response.Result = new LoginRequestDto();
+                _response.IsSuccess = false;
+                _response.StatusCode = System.Net.HttpStatusCode.BadRequest;
+                _response.ErrorMessages.Add("Wrong username or password entered.");
+                return BadRequest(_response);
+            }
+
+            //If isValid is true, we generate jwt token
+            var roles = await _userManager.GetRolesAsync(user);
+
+            JwtSecurityTokenHandler tokenHandler = new();
+            byte[] key = Encoding.ASCII.GetBytes(secretKey);
+            SecurityTokenDescriptor tokenDescriptor = new()
+            {
+                Subject = new ClaimsIdentity(new Claim[]
+                {
+                    new Claim("fullName", user.Name),
+                    new Claim("id", user.Id.ToString()),
+                    new Claim(ClaimTypes.Email, user.UserName.ToString()),
+                    new Claim(ClaimTypes.Role, roles.FirstOrDefault()),
+                }),
+                Expires = DateTime.UtcNow.AddDays(7), //token expires after 7 days
+                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+
+            };
+            SecurityToken token = tokenHandler.CreateToken(tokenDescriptor);
+
+
+
+            LoginResponseDto loginResponse = new LoginResponseDto()
+            {
+                Email = user.Email,
+                Token = tokenHandler.WriteToken(token)
+            };
+
+            if(loginResponse.Email == null || string.IsNullOrEmpty(loginResponse.Token))
+            {
+                _response.IsSuccess = false;
+                _response.StatusCode = System.Net.HttpStatusCode.BadRequest;
+                _response.ErrorMessages.Add("Wrong username or password entered.");
+                return BadRequest(_response);
+            }
+
+            _response.IsSuccess = true;
+            _response.StatusCode = System.Net.HttpStatusCode.OK;
+            _response.Result = loginResponse;
+            return Ok(_response);
+
         }
     }
 }

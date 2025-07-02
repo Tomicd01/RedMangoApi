@@ -92,5 +92,40 @@ namespace RedMangoApi.Controllers
             }
             return _response;
         }
+
+        [HttpGet]
+        public async Task<ActionResult<ApiResponse>> GetShoppingCart(string userId)
+        {
+            if (string.IsNullOrEmpty(userId))
+            {
+                _response.IsSuccess = false;
+                _response.StatusCode = System.Net.HttpStatusCode.BadRequest;
+                _response.ErrorMessages.Add("UserId can't be null.");
+                return BadRequest(_response);
+            }
+
+            ApplicationUser user = await _context.ApplicationUsers.FindAsync(userId);
+            if(user == null)
+            {
+                _response.IsSuccess = false;
+                _response.StatusCode = System.Net.HttpStatusCode.BadRequest;
+                _response.ErrorMessages.Add("User with provided ID does not exist.");
+                return BadRequest(_response);
+            }
+            ShoppingCart cart = await _context.ShoppingCarts
+                .Include(c => c.CartItems)
+                .ThenInclude(ci => ci.MenuItem)
+                .FirstOrDefaultAsync(c => c.UserId == userId);
+
+            if(cart.CartItems != null && cart.CartItems.Count() > 0)
+            {
+                cart.CartTotal = cart.CartItems.Sum(u => u.Quantity * u.MenuItem.Price);
+            }
+
+            _response.IsSuccess = true;
+            _response.StatusCode = System.Net.HttpStatusCode.OK;
+            _response.Result = cart;
+            return Ok(_response);
+        }
     }
 }
